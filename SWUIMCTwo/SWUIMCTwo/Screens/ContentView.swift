@@ -13,9 +13,33 @@ struct ContentView: View {
     @State private var imageScale: CGFloat = 1
     @State private var imageOffset: CGSize = .zero
 
+
+    fileprivate func resetImageScale() {
+        withAnimation(.spring()) {
+            imageOffset = .zero
+            imageScale = 1
+        }
+    }
+
+    fileprivate func zoomInImage() {
+        withAnimation(.spring()) {
+            if imageScale < 5 {
+                imageScale = imageScale + 1
+            }
+        }
+    }
+    fileprivate func zoomOutImage() {
+        withAnimation(.spring()) {
+            if imageScale > 1 {
+                imageScale = imageScale - 1
+            }
+        }
+    }
+
     var body: some View {
         NavigationView{
             ZStack {
+                Color.clear
                 Image("magazine-front-cover")
                     .resizable()
                 //                    .scaledToFit()
@@ -33,10 +57,7 @@ struct ContentView: View {
                                 imageScale = 5
                             }
                         } else {
-                            withAnimation(.spring()) {
-                                imageOffset = .zero
-                                imageScale = 1
-                            }
+                            resetImageScale()
                         }
                     }
                     .gesture(
@@ -49,8 +70,19 @@ struct ContentView: View {
 
                             .onEnded({ _ in
                                 if imageScale <= 1 {
-                                    withAnimation(.spring()) {
-                                        imageOffset = .zero
+                                    resetImageScale()
+                                }
+                            })
+                    )
+                    .gesture(
+                        MagnificationGesture()
+                            .onChanged({ value in
+                                withAnimation(.linear(duration: 1)) {
+                                    if value >= 1 && value <= 5 {
+                                        imageScale = value
+                                    } else if value > 5 {
+                                        imageScale = 5
+                                    } else if value < 1 {
                                         imageScale = 1
                                     }
                                 }
@@ -63,6 +95,50 @@ struct ContentView: View {
             .onAppear(perform: {
                 isAnimating = true
             })
+            .overlay(
+                InfoPannelView(scale: imageScale, offset: imageOffset)
+                    .padding(.horizontal)
+                    .padding(.top, 30)
+                    .onTapGesture(count: 2, perform: {
+                        withAnimation(.spring()) {
+                            imageOffset = .zero
+                            imageScale = 1
+                        }
+                    })
+                , alignment: .top
+            )
+            .overlay(
+                Group{
+                    HStack{
+                        Button {
+                            zoomInImage()
+                        } label: {
+                            Image(systemName: "plus.magnifyingglass")
+                        }
+                        .font(.system(size: 36))
+
+                        Button {
+                            resetImageScale()
+
+                        } label: {
+                            Image(systemName: "arrow.up.left.and.down.right.magnifyingglass")
+                        }
+                        .font(.system(size: 36))
+                        Button {
+                            zoomOutImage()
+                        } label: {
+                            Image(systemName: "minus.magnifyingglass")
+                        }
+                        .font(.system(size: 36))
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(10)
+                    .opacity(isAnimating ? 1 : 0)
+                }
+                    .padding(.bottom, 30)
+                , alignment: .bottom
+            )
         }
         .navigationViewStyle(.stack)
     }
